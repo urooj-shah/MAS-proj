@@ -1,3 +1,9 @@
+# Project data and cache (large files)
+cache/
+data/*.jsonl
+data/*.pkl
+results/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

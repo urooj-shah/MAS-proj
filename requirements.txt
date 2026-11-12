@@ -1,0 +1,12 @@
+torch
+transformers
+accelerate
+bitsandbytes
+datasets
+rank-bm25
+sentence-transformers
+pillow
+tqdm
+matplotlib
+pandas
+scikit-learn
