@@ -231,3 +231,34 @@ def plot_k_ablation(ablation_results, output_dir=None):
     plt.savefig(Path(output_dir) / "k_ablation.png", dpi=150)
     plt.close()
     print(f"Saved k-ablation plot to {output_dir}/k_ablation.png")
+
+
+def plot_agent_ablation(ablation_results, output_dir=None):
+    """Grouped bar chart for agent count ablation."""
+    output_dir = output_dir or config.RESULTS_DIR
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    n_values = sorted(ablation_results.keys())
+    rules = list(ablation_results[n_values[0]].keys())
+    x = np.arange(len(rules))
+    width = 0.25
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = ["#4C72B0", "#55A868", "#C44E52"]
+    for i, n in enumerate(n_values):
+        accs = [ablation_results[n][r]["accuracy"] for r in rules]
+        bars = ax.bar(x + i * width, accs, width, label=f"N={n} agent{'s' if n > 1 else ''}", color=colors[i])
+        for bar, acc in zip(bars, accs):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.003,
+                    f"{acc:.3f}", ha="center", va="bottom", fontsize=7)
+
+    ax.set_xlabel("Voting Rule")
+    ax.set_ylabel("VQA Accuracy")
+    ax.set_title("Accuracy vs Number of Agents")
+    ax.set_xticks(x + width)
+    ax.set_xticklabels(rules)
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(Path(output_dir) / "agent_ablation.png", dpi=150)
+    plt.close()
+    print(f"Saved agent-ablation plot to {output_dir}/agent_ablation.png")

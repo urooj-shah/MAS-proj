@@ -39,12 +39,14 @@ def run_k_ablation(n_questions=None, rules=None, k_values=None, seed=42):
     from src.captioner import load_cached_captions
     from src.retrieval import load_bm25_index, retrieve_for_dataset
     from src.agents import generate_all_ballots
-    from src.vqa import answer_all_questions, load_vqa_model
+    from src.vqa import answer_question, load_vqa_model
+    from src.voting import select_committee
     from src.evaluate import evaluate_rule, build_ground_truth, plot_k_ablation
     import random
+    from tqdm import tqdm
 
     n_questions = n_questions or config.EVAL_SUBSET
-    rules = rules or ["top_k", "av", "pav", "cc", "mes"]
+    rules = rules or ["top_k", "mmr", "av", "pav", "cc", "mes", "borda"]
     k_values = k_values or [3, 5, 7, 10]
 
     print(f"\n{'#'*60}")
@@ -72,10 +74,31 @@ def run_k_ablation(n_questions=None, rules=None, k_values=None, seed=42):
         ablation_results[rule] = {}
         for k in k_values:
             print(f"\n  Running {rule} with k={k}...")
-            predictions = answer_all_questions(
-                dataset, retrieval_results, ballot_results, rule, k,
-                model=vqa_model, processor=vqa_processor,
-            )
+            predictions = {}
+
+            for example in tqdm(dataset, desc=f"{rule} k={k}"):
+                qid = str(example["question_id"])
+                if qid not in retrieval_results:
+                    continue
+
+                all_passages = retrieval_results[qid]
+
+                if rule in ("top_k", "mmr"):
+                    committee = select_committee(rule, {}, all_passages, k)
+                else:
+                    ballots = ballot_results.get(qid, {})
+                    if not ballots:
+                        committee = select_committee("top_k", {}, all_passages, k)
+                    else:
+                        committee = select_committee(rule, ballots, all_passages, k)
+
+                selected = [all_passages[i] for i in committee]
+                answer = answer_question(
+                    example["image"], example["question"], selected,
+                    vqa_model, vqa_processor,
+                )
+                predictions[qid] = answer
+
             res = evaluate_rule(predictions, ground_truth)
             ablation_results[rule][k] = res
             print(f"    {rule} k={k}: accuracy={res['accuracy']:.4f}")
@@ -105,7 +128,7 @@ def run_agent_ablation(n_questions=None, seed=42):
     from src.agents import generate_all_ballots
     from src.vqa import load_vqa_model
     from src.voting import select_committee
-    from src.evaluate import evaluate_rule, build_ground_truth
+    from src.evaluate import evaluate_rule, build_ground_truth, plot_agent_ablation
     import random
     from tqdm import tqdm
 
@@ -115,7 +138,7 @@ def run_agent_ablation(n_questions=None, seed=42):
         2: ["relevance", "uniqueness"],
         3: ["relevance", "uniqueness", "gap_filler"],
     }
-    rules = ["av", "pav", "cc", "mes"]
+    rules = ["av", "pav", "cc", "mes", "borda"]
 
     print(f"\n{'#'*60}")
     print(f"AGENT ABLATION: N=1,2,3 agents")
@@ -183,6 +206,7 @@ def run_agent_ablation(n_questions=None, seed=42):
             serializable[str(n)][rule] = {k: v for k, v in res.items() if k != "per_question"}
     output.write_text(json.dumps(serializable, indent=2))
 
+    plot_agent_ablation(ablation_results)
     print(f"\nAgent ablation results saved to {output}")
     return ablation_results
 

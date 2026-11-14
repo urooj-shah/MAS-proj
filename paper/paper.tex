@@ -1,0 +1,232 @@
+\documentclass[sigconf]{aamas}
+
+\usepackage{balance}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{multirow}
+
+\setcopyright{ifaamas}
+\acmConference[AAMAS '23]{Proc.\@ of the 22nd International Conference
+on Autonomous Agents and Multiagent Systems (AAMAS 2023)}{May 29 -- June 2, 2023}
+{London, United Kingdom}{A.~Ricci, W.~Yeoh, N.~Agmon, B.~An (eds.)}
+\copyrightyear{2023}
+\acmYear{2023}
+\acmDOI{}
+\acmPrice{}
+\acmISBN{}
+
+\acmSubmissionID{???}
+
+\title{Multiwinner Voting for Evidence Selection in Knowledge-Based Visual Question Answering}
+
+\author{Your Name}
+\affiliation{
+  \institution{Carleton University}
+  \city{Ottawa}
+  \country{Canada}}
+\email{your.email@carleton.ca}
+
+\begin{abstract}
+% ~150 words. Hit these beats:
+% 1. Problem: KB-VQA needs external evidence, top-k retrieval picks redundant passages
+% 2. Idea: recast evidence selection as multiwinner election — LLM agents vote, voting rules select
+% 3. What you tested: AV, PAV, CC, MES, Borda on OK-VQA with frozen LLaVA
+% 4. Key result: Borda +2.8%, CC +2.6% over top-k
+% 5. Insight: coverage (CC) matters more than proportionality (PAV/MES) with few agents
+\end{abstract}
+
+\keywords{Multiwinner Voting, Visual Question Answering, Multi-Agent Systems, Evidence Selection}
+
+\begin{document}
+
+\pagestyle{fancy}
+\fancyhead{}
+
+\maketitle
+
+%% ============================================================
+\section{Introduction}
+%% ============================================================
+
+% ~1 page. Structure:
+%
+% Para 1: KB-VQA requires external knowledge. Current approach is top-k retrieval.
+%          Problem: top-k picks redundant passages (all say the same thing).
+%
+% Para 2: Key insight — evidence selection IS a committee election.
+%          Passages = candidates, agents = voters, selected evidence = committee.
+%          This isn't just an analogy — voting theory gives us formal guarantees
+%          (JR, EJR) that top-k and MMR lack.
+%
+% Para 3: What you did — 3 LLM agents with different perspectives vote on passages,
+%          5 voting rules aggregate their ballots. Tested on OK-VQA with frozen LLaVA.
+%
+% Para 4: Contributions as a numbered list:
+%          1. Borda/CC beat top-k by ~2.7%
+%          2. Coverage (CC) matters more than proportionality (PAV/MES collapse to AV)
+%          3. Advantage is largest at k=5, shrinks at large k
+
+%% ============================================================
+\section{Related Work}
+%% ============================================================
+
+% ~0.5-1 page, 3 paragraphs. This goes EARLY in AAMAS papers — position your work
+% relative to existing literature before diving into definitions.
+%
+% Para 1: Retrieval-augmented VQA — RA-VQA, KRISP, Prophet.
+%          They focus on WHAT to retrieve (better retrievers, better prompts).
+%          You focus on HOW TO SELECT from retrieved candidates — complementary contribution.
+%
+% Para 2: Diversity in retrieval — MMR, DPP (determinantal point processes).
+%          These are heuristic/probabilistic. Your approach is principled (voting theory)
+%          with formal guarantees (JR, EJR). MMR is actually one of your baselines.
+%
+% Para 3: Multiwinner voting in AI — Skowron et al. on data summarization,
+%          Lackner & Skowron survey on approval-based committee voting.
+%          You apply these ideas to a new domain: multimodal evidence selection.
+%          Nobody has connected multiwinner voting to VQA before — that's your novelty.
+
+%% ============================================================
+\section{Preliminaries}
+%% ============================================================
+
+% Formal definitions the reader needs before understanding your method.
+
+\subsection{Knowledge-Based VQA}
+% 1 paragraph: What is KB-VQA, why does it need retrieval, cite OK-VQA.
+% Keep it short — reader just needs to know the task setup.
+
+\subsection{Multiwinner Voting}
+% Define the problem: n voters, m candidates, select committee of size k.
+% Then define each rule in 1-2 sentences each:
+%   - AV: most approvals win
+%   - PAV: diminishing returns (1/j marginal gain), greedy
+%   - CC: greedy max coverage of voters
+%   - MES: equal budgets, candidates purchased by supporters
+%   - Borda: rank-based scoring (m - rank)
+% Cite Lackner & Skowron 2023 for the survey.
+
+\subsection{Proportional Representation}
+% Define JR and EJR in plain language (1 paragraph):
+%   - JR: if n/k voters share an approved candidate, they deserve 1 representative
+%   - EJR: stronger — l*n/k cohesive voters deserve l representatives
+%   - Which rules satisfy what: PAV -> JR, MES -> EJR, CC -> coverage, AV/Borda -> neither
+% This sets up the later finding that JR/EJR don't matter with 3 agents.
+
+%% ============================================================
+\section{Method}
+%% ============================================================
+
+\subsection{Pipeline Overview}
+% Draw the pipeline figure (or use ASCII art):
+%   Image+Question -> BLIP caption -> BM25 top-20 -> 3 agents -> voting rule -> LLaVA -> answer
+% Describe each stage in 1 sentence.
+
+\subsection{Agent Design}
+% Describe the 3 agent roles and WHY you chose these perspectives:
+%   - Relevance: broad topical filter
+%   - Uniqueness: promotes diversity (non-redundant passages)
+%   - Gap-filler: catches what obvious relevance misses
+% Mention: each outputs APPROVED set + RANKING (enables both approval and Borda)
+% Mention: prompted to approve >= 5 passages (avg ~6.2 approvals)
+
+\subsection{Voting Rules}
+% Give formal definitions for each rule applied to your setting.
+% Mention tie-breaking with BM25 scores.
+% Define the two baselines: top-k (BM25 scores only) and MMR (relevance-diversity tradeoff).
+
+%% ============================================================
+\section{Experimental Setup}
+%% ============================================================
+
+% ~0.5 page. Cover:
+% - Dataset: OK-VQA, 500 questions, standard VQA accuracy metric (min(1, matches/3))
+% - Knowledge base: 3M Wikipedia passages, BM25 index, top-20 candidates
+% - Models (all frozen, no fine-tuning):
+%     - BLIP-base (captioner)
+%     - Mistral-7B-Instruct-v0.3, 4-bit quantized (agents)
+%     - LLaVA-1.5-13B, 4-bit quantized (answerer)
+% - Committee size k=5, 3 agents
+% - Hardware: 4x NVIDIA L4 GPUs
+
+%% ============================================================
+\section{Results}
+%% ============================================================
+
+\subsection{Main Results}
+% Table: all 7 methods, accuracy, delta vs top-k
+% Key points to make:
+%   - All voting rules beat top-k
+%   - Borda (0.486) and CC (0.484) are the clear winners
+%   - Even simple AV (+1.1%) helps — multi-agent assessment adds value
+%   - MMR (+1.5%) is decent but voting rules do better
+
+\subsection{Committee Size Ablation}
+% Table/figure: k = 3, 5, 7, 10 for each rule
+% Points:
+%   - Smaller k is universally better (less noise for VLM)
+%   - CC's advantage is largest at k=5 (+2.6%), narrows at k=3 and k=10
+%   - At k=3: all methods converge (too few slots for selection to differ)
+%   - At k=10: half the pool selected regardless, differences wash out
+
+\subsection{Agent Count Ablation}
+% Table/figure: N = 1, 2, 3 agents
+% Points:
+%   - N=1: voting is meaningless, just one agent's opinion
+%   - N=2: some diversity, should see improvement
+%   - N=3: full system, best results
+%   - This proves multi-agent DISAGREEMENT is what drives the improvement
+%%% TODO: fill in after agent ablation experiment completes
+
+\subsection{Proportionality Analysis}
+% Key findings:
+%   - AV = PAV = MES (identical committees, Jaccard 1.0) — proportionality collapses with 3 agents
+%   - Zero JR/EJR violations across all rules — ballots are large enough that every agent
+%     always gets represented trivially
+%   - This means: proportionality is a freebie, but coverage (CC) is the actual differentiator
+%   - Implication: with few agents, use CC; proportionality would matter with more agents
+
+\subsection{Committee Overlap}
+% Jaccard similarity table between all pairs of rules
+% Key point: CC has lowest overlap with top-k (0.12) — selects most different passages
+% CC's unique passage selections are the ones that improve accuracy
+
+\subsection{Qualitative Examples}
+% Show 2-3 cases where CC gets it right and top-k doesn't
+% For each: question topic, top-k answer (wrong), CC answer (right), ground truth
+% Explain WHY: CC picked a passage covering a different angle
+
+%% ============================================================
+\section{Discussion}
+%% ============================================================
+
+% ~0.5 page. Cover:
+% - Why coverage > proportionality at this scale (3 agents too few for coalitions)
+% - Why smaller k helps (VLMs are noise-sensitive in context)
+% - Limitations:
+%     - BM25 retrieval (not dense retrieval)
+%     - Single dataset (OK-VQA)
+%     - Single VLM (LLaVA-1.5-13B)
+%     - 3 agents (doesn't exercise proportionality)
+% - Future work: more agents, dense retrieval, multiple datasets, adaptive k
+
+\balance
+
+%% ============================================================
+\section{Conclusion}
+%% ============================================================
+
+% ~0.5 page. Three beats:
+% 1. What you did: recast evidence selection as multiwinner election
+% 2. What you found: CC and Borda beat top-k; coverage > proportionality at this scale
+% 3. Why it matters: principled, formal alternative to heuristic diversity methods
+
+\begin{acks}
+%%% TODO: Acknowledge supervisor, course (COMP 5900), compute resources
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

@@ -47,11 +47,11 @@ def build_vqa_prompt(question, passages):
 
     context = "\n".join(context_lines)
     return (
-        f"Based on the image and the following reference information, "
-        f"answer the question with a short answer (1-3 words).\n\n"
+        f"Use the image and reference information to answer the question. "
+        f"Give ONLY the answer itself — one or two words, no explanation.\n\n"
         f"Reference information:\n{context}\n\n"
         f"Question: {question}\n"
-        f"Answer:"
+        f"Short answer:"
     )
 
 
@@ -84,7 +84,14 @@ def answer_question(image, question, passages, model, processor):
 
     answer = processor.decode(output[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
     answer = answer.strip().split("\n")[0].strip()
-    return answer
+    # Post-process: take only the first few words, drop explanations
+    for sep in [".", ",", ":", ";", " - ", " is ", " are ", " was ", " which ", " that "]:
+        if sep in answer:
+            answer = answer[:answer.index(sep)]
+    words = answer.split()
+    if len(words) > 4:
+        answer = " ".join(words[:4])
+    return answer.strip()
 
 
 def answer_all_questions(dataset, retrieval_cache, ballot_cache, rule, k=None, model=None, processor=None):
